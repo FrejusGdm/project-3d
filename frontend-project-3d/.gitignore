@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+frontend-project-3d/.mcp.json
+.mcp.json
+
+frontend-project-3d/.claude
+.claude
