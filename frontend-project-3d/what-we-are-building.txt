@@ -1,0 +1,8 @@
+We are building Forge - An AI vibebuildign tool - that allows people to create custom key caps - using AI 
+
+We go from your prompts, to 3d models, to 3d prints, to final products. You have an interface where you just pormpt, iterate on your design, and then order. My job is the frotnend. A friend is building the backend.. So currently we are really focused on the backend. 
+
+Can you help me design a hero section? We are building Forge - An AI vibebuildign tool - that allows people to create custom key caps - using AI
+
+We go from your prompts, to 3d models, to 3d prints, to final products. You have an interface where you just pormpt, iterate on your design, and then order. My job is the frotnend. A friend is building the backend.. So currently we are really focused on the backend. I attached a few sketches that I have! We are thinking about somehow a 3D model floating somewhere. Also animations when you click on generate. Some beautiful loading screens with boxes together 
+
