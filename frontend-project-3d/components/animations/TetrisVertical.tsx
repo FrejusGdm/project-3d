@@ -1,133 +1,204 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Cyan/Teal palette matching the 3D version
+// Cyan/Teal palette
 const CYAN_PALETTE = [
-  "#06b6d4", // Cyan 500
-  "#0891b2", // Cyan 600
-  "#22d3ee", // Cyan 400
-  "#67e8f9", // Cyan 300
-  "#155e75", // Cyan 800
-  "#0e7490", // Cyan 700
-  "#a5f3fc", // Cyan 200
+  "#06b6d4",
+  "#0891b2",
+  "#22d3ee",
+  "#67e8f9",
+  "#155e75",
+  "#0e7490",
+  "#a5f3fc",
 ];
 
-// Tetris-like shapes (relative cell positions)
+// Tetris shapes - cells are [col, row] offsets from top-left
 const TETRIS_SHAPES = [
-  // I-piece (horizontal)
-  { cells: [[0, 0], [1, 0], [2, 0], [3, 0]], width: 4, height: 1 },
-  // I-piece (vertical)
-  { cells: [[0, 0], [0, 1], [0, 2], [0, 3]], width: 1, height: 4 },
-  // O-piece (square)
-  { cells: [[0, 0], [1, 0], [0, 1], [1, 1]], width: 2, height: 2 },
-  // T-piece
-  { cells: [[0, 0], [1, 0], [2, 0], [1, 1]], width: 3, height: 2 },
-  // L-piece
-  { cells: [[0, 0], [0, 1], [0, 2], [1, 2]], width: 2, height: 3 },
-  // J-piece
-  { cells: [[1, 0], [1, 1], [1, 2], [0, 2]], width: 2, height: 3 },
-  // S-piece
-  { cells: [[1, 0], [2, 0], [0, 1], [1, 1]], width: 3, height: 2 },
-  // Z-piece
-  { cells: [[0, 0], [1, 0], [1, 1], [2, 1]], width: 3, height: 2 },
-  // Single block
-  { cells: [[0, 0]], width: 1, height: 1 },
-  // Small L
-  { cells: [[0, 0], [0, 1], [1, 1]], width: 2, height: 2 },
+  { cells: [[0, 0], [1, 0], [2, 0], [3, 0]], width: 4, height: 1 }, // I horizontal
+  { cells: [[0, 0], [0, 1], [0, 2], [0, 3]], width: 1, height: 4 }, // I vertical
+  { cells: [[0, 0], [1, 0], [0, 1], [1, 1]], width: 2, height: 2 }, // O square
+  { cells: [[0, 0], [1, 0], [2, 0], [1, 1]], width: 3, height: 2 }, // T
+  { cells: [[0, 0], [0, 1], [0, 2], [1, 2]], width: 2, height: 3 }, // L
+  { cells: [[1, 0], [1, 1], [1, 2], [0, 2]], width: 2, height: 3 }, // J
+  { cells: [[1, 0], [2, 0], [0, 1], [1, 1]], width: 3, height: 2 }, // S
+  { cells: [[0, 0], [1, 0], [1, 1], [2, 1]], width: 3, height: 2 }, // Z
+  { cells: [[0, 0]], width: 1, height: 1 }, // Single
 ];
+
+interface StackedBlock {
+  id: string;
+  col: number;
+  row: number;
+  color: string;
+}
 
 interface FallingPiece {
   id: string;
-  shape: typeof TETRIS_SHAPES[0];
-  x: number; // Starting column
+  cells: number[][];
+  col: number;
   color: string;
-  delay: number;
+  targetRow: number;
 }
 
-const GRID_COLS = 10;
-const CELL_SIZE = 28; // px
-const GAP = 3; // px
+const GRID_COLS = 12;
+const GRID_ROWS = 16;
+const CELL_SIZE = 24;
+const GAP = 2;
 
 export function TetrisVertical() {
-  const [pieces, setPieces] = useState<FallingPiece[]>([]);
+  const [stackedBlocks, setStackedBlocks] = useState<StackedBlock[]>([]);
+  const [fallingPiece, setFallingPiece] = useState<FallingPiece | null>(null);
+  const columnHeightsRef = useRef<number[]>(Array(GRID_COLS).fill(0));
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPieces((prev) => {
-        // Reset when too many pieces
-        if (prev.length > 25) {
-          return [];
-        }
+  // Calculate where a piece should land based on current stack
+  const calculateLandingRow = useCallback((cells: number[][], startCol: number) => {
+    let maxHeight = 0;
 
-        // Pick random shape
-        const shape = TETRIS_SHAPES[Math.floor(Math.random() * TETRIS_SHAPES.length)];
+    cells.forEach(([cx]) => {
+      const col = startCol + cx;
+      if (col >= 0 && col < GRID_COLS) {
+        maxHeight = Math.max(maxHeight, columnHeightsRef.current[col]);
+      }
+    });
 
-        // Pick random starting column (ensure it fits)
-        const maxCol = GRID_COLS - shape.width;
-        const col = Math.floor(Math.random() * (maxCol + 1));
-
-        const newPiece: FallingPiece = {
-          id: Math.random().toString(36).substr(2, 9),
-          shape,
-          x: col,
-          color: CYAN_PALETTE[Math.floor(Math.random() * CYAN_PALETTE.length)],
-          delay: Math.random() * 0.3,
-        };
-
-        return [...prev, newPiece];
-      });
-    }, 400);
-
-    return () => clearInterval(interval);
+    return maxHeight;
   }, []);
 
+  // Spawn a new piece
+  const spawnPiece = useCallback(() => {
+    const shape = TETRIS_SHAPES[Math.floor(Math.random() * TETRIS_SHAPES.length)];
+    const maxCol = GRID_COLS - shape.width;
+    const col = Math.floor(Math.random() * (maxCol + 1));
+    const color = CYAN_PALETTE[Math.floor(Math.random() * CYAN_PALETTE.length)];
+
+    const targetRow = calculateLandingRow(shape.cells, col);
+
+    // Check if stack is too high - reset
+    if (targetRow + shape.height > GRID_ROWS - 2) {
+      setStackedBlocks([]);
+      columnHeightsRef.current = Array(GRID_COLS).fill(0);
+      return;
+    }
+
+    setFallingPiece({
+      id: Math.random().toString(36).substr(2, 9),
+      cells: shape.cells,
+      col,
+      color,
+      targetRow,
+    });
+  }, [calculateLandingRow]);
+
+  // Handle piece landing
+  const handlePieceLanded = useCallback(() => {
+    if (!fallingPiece) return;
+
+    const newBlocks: StackedBlock[] = [];
+
+    fallingPiece.cells.forEach(([cx, cy]) => {
+      const col = fallingPiece.col + cx;
+      const row = fallingPiece.targetRow + cy;
+
+      newBlocks.push({
+        id: `${fallingPiece.id}-${cx}-${cy}`,
+        col,
+        row,
+        color: fallingPiece.color,
+      });
+
+      // Update column height
+      columnHeightsRef.current[col] = Math.max(
+        columnHeightsRef.current[col],
+        row + 1
+      );
+    });
+
+    setStackedBlocks(prev => [...prev, ...newBlocks]);
+    setFallingPiece(null);
+  }, [fallingPiece]);
+
+  // Spawn pieces periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!fallingPiece) {
+        spawnPiece();
+      }
+    }, 150);
+
+    return () => clearInterval(interval);
+  }, [fallingPiece, spawnPiece]);
+
   const gridWidth = GRID_COLS * (CELL_SIZE + GAP);
+  const gridHeight = GRID_ROWS * (CELL_SIZE + GAP);
 
   return (
-    <div className="w-full h-full relative overflow-hidden bg-neutral-50/50">
+    <div className="w-full h-full flex items-end justify-center overflow-hidden bg-neutral-50/50 pb-4">
       <div
-        className="absolute inset-0 flex justify-center"
-        style={{ width: "100%" }}
+        className="relative border-b-2 border-l border-r border-neutral-300/50 rounded-b-lg"
+        style={{ width: gridWidth, height: gridHeight }}
       >
-        <div className="relative" style={{ width: gridWidth }}>
-          <AnimatePresence>
-            {pieces.map((piece) => (
-              <motion.div
-                key={piece.id}
-                initial={{ top: -150, opacity: 1 }}
-                animate={{ top: "100%" }}
-                exit={{ opacity: 0 }}
-                transition={{
-                  duration: 3 + Math.random() * 1.5,
-                  delay: piece.delay,
-                  ease: "linear",
-                }}
-                className="absolute"
-                style={{
-                  left: piece.x * (CELL_SIZE + GAP),
-                }}
-              >
-                {/* Render each cell of the tetris piece */}
-                {piece.shape.cells.map(([cx, cy], i) => (
-                  <div
-                    key={i}
-                    className="absolute rounded-sm border border-black/10"
-                    style={{
-                      width: CELL_SIZE,
-                      height: CELL_SIZE,
-                      backgroundColor: piece.color,
-                      left: cx * (CELL_SIZE + GAP),
-                      top: cy * (CELL_SIZE + GAP),
-                      boxShadow: "inset 2px 2px 4px rgba(255,255,255,0.3), inset -1px -1px 2px rgba(0,0,0,0.1)",
-                    }}
-                  />
-                ))}
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
+        {/* Stacked blocks */}
+        {stackedBlocks.map((block) => (
+          <motion.div
+            key={block.id}
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="absolute rounded-sm border border-black/10"
+            style={{
+              width: CELL_SIZE,
+              height: CELL_SIZE,
+              backgroundColor: block.color,
+              left: block.col * (CELL_SIZE + GAP),
+              bottom: block.row * (CELL_SIZE + GAP),
+              boxShadow: "inset 2px 2px 4px rgba(255,255,255,0.3), inset -1px -1px 2px rgba(0,0,0,0.1)",
+            }}
+          />
+        ))}
+
+        {/* Falling piece */}
+        <AnimatePresence onExitComplete={handlePieceLanded}>
+          {fallingPiece && (
+            <motion.div
+              key={fallingPiece.id}
+              initial={{ bottom: gridHeight + 50 }}
+              animate={{ bottom: fallingPiece.targetRow * (CELL_SIZE + GAP) }}
+              exit={{ opacity: 1 }}
+              transition={{
+                type: "spring",
+                stiffness: 100,
+                damping: 15,
+                mass: 0.8,
+              }}
+              onAnimationComplete={() => {
+                handlePieceLanded();
+              }}
+              className="absolute"
+              style={{ left: fallingPiece.col * (CELL_SIZE + GAP) }}
+            >
+              {fallingPiece.cells.map(([cx, cy], i) => (
+                <div
+                  key={i}
+                  className="absolute rounded-sm border border-black/10"
+                  style={{
+                    width: CELL_SIZE,
+                    height: CELL_SIZE,
+                    backgroundColor: fallingPiece.color,
+                    left: cx * (CELL_SIZE + GAP),
+                    bottom: cy * (CELL_SIZE + GAP),
+                    boxShadow: "inset 2px 2px 4px rgba(255,255,255,0.3), inset -1px -1px 2px rgba(0,0,0,0.1)",
+                  }}
+                />
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Ground indicator */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-t from-neutral-300 to-transparent"
+        />
       </div>
     </div>
   );
