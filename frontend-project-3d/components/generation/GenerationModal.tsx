@@ -4,8 +4,8 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../backend-project-3d/convex/_generated/api";
 import { Id } from "../../../backend-project-3d/convex/_generated/dataModel";
 import { useUser } from "@clerk/nextjs";
-import { X, Check, Loader2, AlertCircle, Globe, Download } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { X, Check, Loader2, AlertCircle, Globe } from "lucide-react";
+import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 
@@ -39,8 +39,6 @@ export function GenerationModal({
 
   const completedCount =
     generations?.filter((g) => g.status === "completed").length ?? 0;
-  const failedCount =
-    generations?.filter((g) => g.status === "failed").length ?? 0;
   const pendingCount =
     generations?.filter(
       (g) => g.status === "pending" || g.status === "generating"
@@ -68,7 +66,7 @@ export function GenerationModal({
           <div>
             <h2 className="text-xl font-semibold text-black">Your Creations</h2>
             <p className="text-sm text-neutral-500 mt-1 line-clamp-1">
-              "{prompt}"
+              &quot;{prompt}&quot;
             </p>
           </div>
           <button

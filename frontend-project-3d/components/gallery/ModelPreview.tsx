@@ -6,6 +6,7 @@ import { OrbitControls, Environment, Center } from "@react-three/drei";
 import { PLYLoader } from "three/examples/jsm/loaders/PLYLoader.js";
 import { useLoader } from "@react-three/fiber";
 import * as THREE from "three";
+import Image from "next/image";
 
 interface ModelPreviewProps {
   plyUrl: string | null;
@@ -65,8 +66,7 @@ export function ModelPreview({
   thumbnailUrl,
   isHovered = false,
 }: ModelPreviewProps) {
-  const [showModel, setShowModel] = useState(false);
-  const [hasError, setHasError] = useState(false);
+  const [hasError] = useState(false);
 
   // Only load 3D model on hover for performance
   const shouldShow3D = isHovered && plyUrl && !hasError;
@@ -75,10 +75,11 @@ export function ModelPreview({
     <div className="relative w-full h-full bg-neutral-50 rounded-xl overflow-hidden">
       {/* Static thumbnail when not hovered */}
       {thumbnailUrl && !shouldShow3D && (
-        <img
+        <Image
           src={thumbnailUrl}
           alt="Model preview"
-          className="w-full h-full object-cover"
+          fill
+          className="object-cover"
         />
       )}
 

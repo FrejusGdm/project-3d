@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, useMemo } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -115,7 +115,7 @@ export function FallingTetrisLoader() {
     }, 100); // Spawn every 100ms
 
     return () => clearInterval(interval);
-  }, []);
+  }, [offset]);
 
   return (
     <group>
@@ -132,4 +132,5 @@ export function FallingTetrisLoader() {
     </group>
   );
 }
+
 

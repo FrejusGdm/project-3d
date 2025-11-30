@@ -18,13 +18,11 @@ export function HeroInput({
   const { isSignedIn } = useUser();
   const [isFocused, setIsFocused] = useState(false);
   const [value, setValue] = useState("");
-  const [showSignInPrompt, setShowSignInPrompt] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = (e?: FormEvent) => {
     if (e) e.preventDefault();
     if (!isSignedIn) {
-      setShowSignInPrompt(true);
       return;
     }
     if (value.trim() && onSubmit && !isLoading) {

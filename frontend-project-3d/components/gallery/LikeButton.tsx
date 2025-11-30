@@ -6,7 +6,7 @@ import { api } from "../../../backend-project-3d/convex/_generated/api";
 import { Id } from "../../../backend-project-3d/convex/_generated/dataModel";
 import { useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
-import { useState, useOptimistic } from "react";
+import { useOptimistic } from "react";
 
 interface LikeButtonProps {
   generationId: Id<"generations">;
@@ -44,7 +44,7 @@ export function LikeButton({
         userId: user.id,
         generationId,
       });
-    } catch (error) {
+    } catch {
       // Revert on error
       setOptimisticState(optimisticState.liked);
     }

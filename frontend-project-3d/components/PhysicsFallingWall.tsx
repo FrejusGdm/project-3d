@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Physics, useBox, usePlane } from "@react-three/cannon";
 import * as THREE from "three";
 
@@ -26,7 +26,7 @@ function PhysicsBlock({ position, color }: { position: [number, number, number],
   }));
 
   return (
-    <mesh ref={ref as any} castShadow receiveShadow>
+    <mesh ref={ref as React.RefObject<THREE.Mesh>} castShadow receiveShadow>
       <boxGeometry args={[0.5, 0.5, 0.5]} />
       <meshStandardMaterial color={color} />
       <lineSegments>
@@ -45,7 +45,7 @@ function Floor() {
   }));
   
   return (
-    <mesh ref={ref as any} receiveShadow>
+    <mesh ref={ref as React.RefObject<THREE.Mesh>} receiveShadow>
       <planeGeometry args={[10, 10]} />
       <meshStandardMaterial color="#f5f5f5" transparent opacity={0.5} />
     </mesh>

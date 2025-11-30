@@ -43,7 +43,7 @@ export default function FavoritesPage() {
               Favorites
             </h1>
             <p className="text-neutral-500 mt-1">
-              Designs you've liked from the community
+              Designs you&apos;ve liked from the community
             </p>
           </div>
 
@@ -61,7 +61,7 @@ export default function FavoritesPage() {
                 No favorites yet
               </h3>
               <p className="text-neutral-500 mb-6 max-w-md">
-                Browse the community gallery and like designs you love. They'll
+                Browse the community gallery and like designs you love. They&apos;ll
                 appear here for easy access.
               </p>
               <Link
