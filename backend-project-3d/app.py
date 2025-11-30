@@ -3,13 +3,19 @@ FastAPI web server for 3D generation pipeline.
 Exposes endpoints that Convex actions call to generate 3D models.
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from pathlib import Path
 import os
+import logging
+import traceback
 from gen_pipeline import run_pipeline
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="3D Generation Pipeline API")
 
@@ -43,16 +49,31 @@ async def generate(request: GenerateRequest):
     """
     Generate a 3D model from a text prompt.
     Called by Convex actions to start the generation process.
+    
+    Note: This is a long-running operation (can take 1-2 minutes).
+    Render free tier has a 30s timeout, so this may timeout.
+    Consider upgrading to a paid plan or using background tasks.
     """
+    logger.info(f"Received generation request: prompt='{request.prompt[:50]}...', model={request.image_model}, 3d_model={request.three_d_model}")
+    
     try:
+        logger.info("Starting pipeline execution...")
         result = run_pipeline(
             prompt=request.prompt,
             image_model_name=request.image_model,
             three_d_model_name=request.three_d_model,
         )
+        logger.info(f"Pipeline completed successfully: {result}")
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        error_msg = str(e)
+        error_trace = traceback.format_exc()
+        logger.error(f"Pipeline failed: {error_msg}")
+        logger.error(f"Traceback: {error_trace}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Pipeline failed: {error_msg}. Check logs for details."
+        )
 
 
 @app.get("/files/{file_path:path}")
