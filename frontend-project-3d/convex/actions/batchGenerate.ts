@@ -66,27 +66,61 @@ export const generateSingle = internalAction({
 
       // Call Python pipeline via HTTP endpoint
       // The Python pipeline should be exposed as an HTTP action
-      const response = await fetch(`${process.env.PIPELINE_URL || "http://localhost:8000"}/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: enhancedPrompt,
-          image_model: "nanobanana",
-          three_d_model: "trellis",
-        }),
-      });
+      const pipelineUrl = process.env.PIPELINE_URL || "http://localhost:8000";
+      const generateUrl = `${pipelineUrl}/generate`;
+      
+      console.log(`[generateSingle] Calling pipeline at: ${generateUrl}`);
+      console.log(`[generateSingle] PIPELINE_URL env var: ${process.env.PIPELINE_URL || "NOT SET (using default)"}`);
+      
+      let response: Response;
+      try {
+        response = await fetch(generateUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt: enhancedPrompt,
+            image_model: "nanobanana",
+            three_d_model: "trellis",
+          }),
+        });
+      } catch (fetchError) {
+        const errorMessage = fetchError instanceof Error 
+          ? `Fetch failed: ${fetchError.message}. URL: ${generateUrl}`
+          : `Fetch failed: Unknown error. URL: ${generateUrl}`;
+        console.error(`[generateSingle] ${errorMessage}`, fetchError);
+        throw new Error(errorMessage);
+      }
 
       if (!response.ok) {
-        throw new Error(`Pipeline failed: ${response.statusText}`);
+        const errorText = await response.text().catch(() => response.statusText);
+        const errorMessage = `Pipeline failed (${response.status}): ${errorText}`;
+        console.error(`[generateSingle] ${errorMessage}`);
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
       // Result: { id, format, location, path }
 
       // Read the PLY file and upload to Convex storage
-      const plyResponse = await fetch(`${process.env.PIPELINE_URL || "http://localhost:8000"}/files/${result.path}`);
+      const filesUrl = `${pipelineUrl}/files/${result.path}`;
+      console.log(`[generateSingle] Fetching PLY file from: ${filesUrl}`);
+      
+      let plyResponse: Response;
+      try {
+        plyResponse = await fetch(filesUrl);
+      } catch (fetchError) {
+        const errorMessage = fetchError instanceof Error
+          ? `Failed to fetch PLY file: ${fetchError.message}. URL: ${filesUrl}`
+          : `Failed to fetch PLY file: Unknown error. URL: ${filesUrl}`;
+        console.error(`[generateSingle] ${errorMessage}`, fetchError);
+        throw new Error(errorMessage);
+      }
+      
       if (!plyResponse.ok) {
-        throw new Error("Failed to fetch PLY file");
+        const errorText = await plyResponse.text().catch(() => plyResponse.statusText);
+        const errorMessage = `Failed to fetch PLY file (${plyResponse.status}): ${errorText}`;
+        console.error(`[generateSingle] ${errorMessage}`);
+        throw new Error(errorMessage);
       }
       const plyBlob = await plyResponse.blob();
 
@@ -111,11 +145,20 @@ export const generateSingle = internalAction({
       });
 
     } catch (error) {
-      // Mark as failed
+      // Mark as failed with detailed error message
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : typeof error === "string"
+        ? error
+        : JSON.stringify(error);
+      
+      console.error(`[generateSingle] Generation failed for ${args.generationId}:`, errorMessage);
+      console.error(`[generateSingle] Full error:`, error);
+      
       await ctx.runMutation(api.generations.updateStatus, {
         id: args.generationId,
         status: "failed",
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: errorMessage,
       });
     }
   },

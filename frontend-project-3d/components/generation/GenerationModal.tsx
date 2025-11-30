@@ -82,9 +82,14 @@ export function GenerationModal({
           <div className="px-6 py-3 bg-neutral-50 border-b border-neutral-100">
             <div className="flex items-center gap-3">
               <Loader2 className="w-4 h-4 animate-spin text-neutral-500" />
-              <span className="text-sm text-neutral-600">
-                Generating... {completedCount}/4 completed
-              </span>
+              <div className="flex-1">
+                <span className="text-sm text-neutral-600">
+                  Generating... {completedCount}/4 completed
+                </span>
+                <p className="text-xs text-neutral-500 mt-1">
+                  Each generation takes about 1 minute. Please be patient...
+                </p>
+              </div>
             </div>
             <div className="mt-2 h-1 bg-neutral-200 rounded-full overflow-hidden">
               <div

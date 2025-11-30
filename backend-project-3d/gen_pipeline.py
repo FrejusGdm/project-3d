@@ -85,10 +85,24 @@ class NanoBanana(ImageModel):
     )
 
     image = None
-    for part in response.parts:
-      if part.inline_data is not None:
-        # Convert inline bytes to a real PIL Image
-        image = Image.open(io.BytesIO(part.inline_data.data))
+    # Handle different response structures
+    if hasattr(response, 'parts') and response.parts:
+      # Old API structure
+      for part in response.parts:
+        if hasattr(part, 'inline_data') and part.inline_data is not None:
+          image = Image.open(io.BytesIO(part.inline_data.data))
+          break
+    elif hasattr(response, 'candidates') and response.candidates:
+      # New API structure - check candidates
+      for candidate in response.candidates:
+        if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+          for part in candidate.content.parts:
+            if hasattr(part, 'inline_data') and part.inline_data is not None:
+              image = Image.open(io.BytesIO(part.inline_data.data))
+              break
+        if image is not None:
+          break
+    
     if image is None:
       raise RuntimeError("Model response did not include an image")
     return image

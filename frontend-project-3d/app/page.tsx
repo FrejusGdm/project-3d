@@ -68,6 +68,15 @@ export default function Home() {
             >
               Design custom keycaps with AI. We 3D print them for you.
             </motion.p>
+            {isGenerating && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-sm text-neutral-400 mb-4"
+              >
+                Generating 4 variations... This takes about 1 minute per model.
+              </motion.p>
+            )}
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
