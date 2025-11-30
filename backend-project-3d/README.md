@@ -9,10 +9,17 @@ FastAPI web service for generating 3D models from text prompts.
 pip install -r requirements.txt
 ```
 
-2. Set environment variables:
-- `GOOGLE_API_KEY` - Google Gemini API key
-- `REPLICATE_API_KEY` - Replicate API key
-- `PORT` - Port to run on (default: 8000)
+2. Create `.env.local` file with environment variables:
+```bash
+# Required: Google Gemini API Key (for image generation)
+GOOGLE_API_KEY=your_google_api_key_here
+
+# Required: Replicate API Key (for 3D model generation)
+REPLICATE_API_KEY=your_replicate_api_key_here
+
+# Optional: Port to run on (defaults to 8000, Render sets this automatically)
+PORT=8000
+```
 
 ## Running Locally
 
