@@ -24,12 +24,15 @@ OUTPUT_DIR = Path("outputs")
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 def _save_file_output(file_obj, suffix=".ply"):
-  """Persist a Replicate FileOutput (or any file-like with read()) and return (id, path)."""
+  """Persist a Replicate FileOutput (or any file-like with read()) and return (id, filename)."""
   file_id = uuid.uuid4().hex
-  path = OUTPUT_DIR / f"{file_id}{suffix}"
+  filename = f"{file_id}{suffix}"
+  path = OUTPUT_DIR / filename
   with open(path, "wb") as f:
     f.write(file_obj.read())
-  return file_id, path
+  # Return just the filename, not the full path with OUTPUT_DIR
+  # This prevents double-path issues in the /files/ endpoint
+  return file_id, filename
 
 
 def materialize_model_output(model_output):
