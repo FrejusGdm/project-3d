@@ -57,9 +57,10 @@ def materialize_model_output(model_output):
 
   logger.info(f"[materialize_model_output] Dict keys: {list(model_output.keys())}")
   
+  # Preferred keys in order of preference, with their expected file extensions
   preferred_keys = [
-    ("model_file", ".ply"),
-    ("gaussian_ply", ".ply"),
+    ("gaussian_ply", ".ply"),  # Most preferred - this is what we want
+    ("model_file", ".ply"),    # Fallback if gaussian_ply not available
     ("ply", ".ply"),
     ("output", ".ply"),
   ]
@@ -68,40 +69,62 @@ def materialize_model_output(model_output):
     if key in model_output:
       file_obj = model_output[key]
       logger.info(f"[materialize_model_output] Found key '{key}': type={type(file_obj)}, hasattr('read')={hasattr(file_obj, 'read')}")
+      
       if hasattr(file_obj, "read"):
+        # File-like object
         file_id, path = _save_file_output(file_obj, suffix=suffix)
         logger.info(f"[materialize_model_output] Saved file from '{key}': {path}")
         return {"id": file_id, "format": suffix.lstrip("."), "location": "file", "path": str(path)}
-      elif isinstance(file_obj, str):
-        # Sometimes Replicate returns URLs as strings
-        logger.info(f"[materialize_model_output] Key '{key}' is a string (URL?): {file_obj[:100] if len(str(file_obj)) > 100 else file_obj}")
+      elif isinstance(file_obj, str) and file_obj.startswith("http"):
+        # URL string - download it
+        logger.info(f"[materialize_model_output] Key '{key}' is a URL: {file_obj}")
+        # Only download if it's the right file type (check URL ends with expected extension)
+        if file_obj.lower().endswith(suffix.lower()) or suffix == ".ply" and ".ply" in file_obj.lower():
+          try:
+            import requests
+            logger.info(f"[materialize_model_output] Downloading {suffix} file from URL: {file_obj}")
+            response = requests.get(file_obj, timeout=120)
+            response.raise_for_status()
+            file_id, path = _save_file_output(io.BytesIO(response.content), suffix=suffix)
+            logger.info(f"[materialize_model_output] Downloaded and saved: {path}")
+            return {"id": file_id, "format": suffix.lstrip("."), "location": "file", "path": str(path)}
+          except Exception as e:
+            logger.error(f"[materialize_model_output] Failed to download from URL '{key}': {e}")
+            # Continue to try other options
+        else:
+          logger.info(f"[materialize_model_output] Skipping '{key}' - URL doesn't match expected extension {suffix}")
       else:
-        logger.info(f"[materialize_model_output] Key '{key}' is not a file-like object: {type(file_obj)}")
+        logger.info(f"[materialize_model_output] Key '{key}' is not a file-like object or URL: {type(file_obj)}")
 
-  # Fallback: first file-like value we can read
-  logger.info("[materialize_model_output] Trying fallback: checking all dict values")
+  # Fallback: look for any .ply URL or file-like object
+  logger.info("[materialize_model_output] Trying fallback: checking all dict values for .ply files")
   for key, value in model_output.items():
+    if value is None:
+      continue
     logger.info(f"[materialize_model_output] Checking key '{key}': type={type(value)}, hasattr('read')={hasattr(value, 'read')}")
+    
     if hasattr(value, "read"):
+      # File-like object
       file_id, path = _save_file_output(value, suffix=".ply")
       logger.info(f"[materialize_model_output] Found file-like object in '{key}': {path}")
       return {"id": file_id, "format": "ply", "location": "file", "path": str(path)}
-    elif isinstance(value, str):
-      # Handle URL strings - Replicate sometimes returns URLs
-      if value.startswith("http") or value.endswith(".ply") or ".ply" in value.lower():
-        logger.info(f"[materialize_model_output] Found URL/string in '{key}': {value}")
-        # Download from URL
+    elif isinstance(value, str) and value.startswith("http"):
+      # URL string - only download if it's a .ply file
+      if ".ply" in value.lower():
+        logger.info(f"[materialize_model_output] Found .ply URL in '{key}': {value}")
         try:
           import requests
-          logger.info(f"[materialize_model_output] Downloading from URL: {value}")
-          response = requests.get(value, timeout=60)
+          logger.info(f"[materialize_model_output] Downloading .ply file from URL: {value}")
+          response = requests.get(value, timeout=120)
           response.raise_for_status()
           file_id, path = _save_file_output(io.BytesIO(response.content), suffix=".ply")
           logger.info(f"[materialize_model_output] Downloaded and saved: {path}")
           return {"id": file_id, "format": "ply", "location": "file", "path": str(path)}
         except Exception as e:
-          logger.error(f"[materialize_model_output] Failed to download from URL: {e}")
+          logger.error(f"[materialize_model_output] Failed to download from URL '{key}': {e}")
           # Continue to try other options
+      else:
+        logger.info(f"[materialize_model_output] Skipping '{key}' - URL is not a .ply file")
 
   logger.error(f"[materialize_model_output] Could not find file-like output. Full structure: {model_output}")
   raise ValueError(f"Could not find a file-like output in model_output. Keys: {list(model_output.keys()) if isinstance(model_output, dict) else 'N/A'}. Structure: {str(model_output)[:500]}")
