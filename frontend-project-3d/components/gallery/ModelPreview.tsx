@@ -1,9 +1,6 @@
 "use client";
 
-import { Suspense, useRef, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Environment, Center, useGLTF } from "@react-three/drei";
-import * as THREE from "three";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 
 interface ModelPreviewProps {
@@ -12,44 +9,51 @@ interface ModelPreviewProps {
   isHovered?: boolean;
 }
 
-function GLBModel({ url }: { url: string }) {
-  const { scene } = useGLTF(url);
-  const groupRef = useRef<THREE.Group>(null);
+// Wrapper component for model-viewer to avoid TypeScript issues with web components
+function ModelViewer({ 
+  src, 
+  onLoad, 
+  onError 
+}: { 
+  src: string; 
+  onLoad?: () => void; 
+  onError?: () => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Slow rotation
-  useFrame((state, delta) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.3;
-    }
-  });
+  useEffect(() => {
+    if (!containerRef.current) return;
 
-  // Clone the scene to avoid issues with reusing
-  const clonedScene = scene.clone();
+    // Create model-viewer element
+    const modelViewer = document.createElement("model-viewer");
+    modelViewer.setAttribute("src", src);
+    modelViewer.setAttribute("alt", "3D Model");
+    modelViewer.setAttribute("auto-rotate", "");
+    modelViewer.setAttribute("camera-controls", "");
+    modelViewer.setAttribute("shadow-intensity", "1");
+    modelViewer.setAttribute("exposure", "1.2");
+    modelViewer.setAttribute("camera-orbit", "0deg 75deg 105%");
+    modelViewer.style.width = "100%";
+    modelViewer.style.height = "100%";
+    modelViewer.style.backgroundColor = "transparent";
 
-  return (
-    <Center>
-      <group ref={groupRef} scale={2}>
-        <primitive object={clonedScene} />
-      </group>
-    </Center>
-  );
-}
+    // Add event listeners
+    const handleLoad = () => onLoad?.();
+    const handleError = () => onError?.();
+    
+    modelViewer.addEventListener("load", handleLoad);
+    modelViewer.addEventListener("error", handleError);
 
-function LoadingPlaceholder() {
-  const meshRef = useRef<THREE.Mesh>(null);
+    containerRef.current.appendChild(modelViewer);
 
-  useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y = state.clock.elapsedTime * 0.5;
-    }
-  });
+    return () => {
+      modelViewer.removeEventListener("load", handleLoad);
+      modelViewer.removeEventListener("error", handleError);
+      modelViewer.remove();
+    };
+  }, [src, onLoad, onError]);
 
-  return (
-    <mesh ref={meshRef}>
-      <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial color="#e5e5e5" wireframe />
-    </mesh>
-  );
+  return <div ref={containerRef} className="w-full h-full" />;
 }
 
 export function ModelPreview({
@@ -57,7 +61,16 @@ export function ModelPreview({
   thumbnailUrl,
   isHovered = false,
 }: ModelPreviewProps) {
-  const [hasError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
+  // Reset loading state when hover changes
+  useEffect(() => {
+    if (isHovered) {
+      setIsLoading(true);
+      setHasError(false);
+    }
+  }, [isHovered]);
 
   // Only load 3D model on hover for performance
   const shouldShow3D = isHovered && plyUrl && !hasError;
@@ -81,28 +94,35 @@ export function ModelPreview({
         </div>
       )}
 
-      {/* 3D Canvas on hover */}
+      {/* 3D Model Viewer on hover - using Google's model-viewer */}
       {shouldShow3D && (
-        <Canvas
-          camera={{ position: [0, 0, 5], fov: 45 }}
-          className="absolute inset-0"
-        >
-          <ambientLight intensity={0.5} />
-          <directionalLight position={[10, 10, 5]} intensity={1} />
-          <Suspense fallback={<LoadingPlaceholder />}>
-            <GLBModel url={plyUrl} />
-          </Suspense>
-          <OrbitControls
-            enableZoom={false}
-            enablePan={false}
-            autoRotate={false}
+        <>
+          {/* Loading overlay */}
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-neutral-100 z-10">
+              <div className="w-8 h-8 border-2 border-neutral-300 border-t-neutral-600 rounded-full animate-spin" />
+            </div>
+          )}
+          <ModelViewer
+            src={plyUrl}
+            onLoad={() => setIsLoading(false)}
+            onError={() => {
+              setHasError(true);
+              setIsLoading(false);
+            }}
           />
-          <Environment preset="studio" />
-        </Canvas>
+        </>
+      )}
+
+      {/* Error state */}
+      {hasError && isHovered && (
+        <div className="absolute inset-0 flex items-center justify-center bg-red-50">
+          <span className="text-sm text-red-500">Failed to load model</span>
+        </div>
       )}
 
       {/* Hover indicator */}
-      {plyUrl && !isHovered && (
+      {plyUrl && !isHovered && !hasError && (
         <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/60 text-white text-xs rounded-md backdrop-blur-sm">
           Hover for 3D
         </div>

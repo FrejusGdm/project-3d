@@ -8,6 +8,7 @@ import { X, Check, Loader2, AlertCircle, Globe } from "lucide-react";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { useState } from "react";
+import { StaggerBlockLoader } from "./StaggerBlockLoader";
 
 const ModelPreview = dynamic(
   () => import("../gallery/ModelPreview").then((mod) => mod.ModelPreview),
@@ -173,11 +174,11 @@ export function GenerationModal({
                   </div>
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center bg-neutral-50">
-                    <Loader2 className="w-8 h-8 animate-spin text-neutral-400" />
-                    <span className="text-sm text-neutral-500 mt-3">
+                    <StaggerBlockLoader size={120} />
+                    <span className="text-xs text-neutral-500 mt-2 lowercase tracking-widest">
                       {gen.status === "generating"
-                        ? "Generating..."
-                        : "In queue..."}
+                        ? "forging..."
+                        : "in queue..."}
                     </span>
                   </div>
                 )}
@@ -190,9 +191,12 @@ export function GenerationModal({
               Array.from({ length: 2 - generations.length }).map((_, i) => (
                 <div
                   key={`placeholder-${i}`}
-                  className="aspect-square rounded-2xl border-2 border-dashed border-neutral-200 flex items-center justify-center bg-neutral-50"
+                  className="aspect-square rounded-2xl border-2 border-dashed border-neutral-200 flex flex-col items-center justify-center bg-neutral-50"
                 >
-                  <Loader2 className="w-6 h-6 animate-spin text-neutral-300" />
+                  <StaggerBlockLoader size={120} />
+                  <span className="text-xs text-neutral-400 mt-2 lowercase tracking-widest">
+                    preparing...
+                  </span>
                 </div>
               ))}
           </div>

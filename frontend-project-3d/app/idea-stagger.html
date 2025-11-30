@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Block Loader - Stagger</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #040810;
+    }
+
+    .stage {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      overflow: visible;
+    }
+
+    .block {
+      position: absolute;
+      will-change: transform, opacity;
+      pointer-events: none;
+    }
+
+    .block-face {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .block-inner-grid {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: grid;
+    }
+
+    .block-cell {
+      box-sizing: border-box;
+    }
+
+    .status {
+      margin-top: 32px;
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: lowercase;
+      opacity: 0.6;
+      color: #5aeada;
+    }
+
+    @keyframes idle {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(0) scale(1.012); }
+    }
+    .block.done {
+      animation: idle var(--pulse-dur) ease-in-out infinite;
+      animation-delay: var(--pulse-delay);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="stage" id="stage"></div>
+  <div class="status">building</div>
+
+  <script>
+    const stage = document.getElementById('stage');
+    const CELL = 40;
+    const GRID = 5;
+    const RIM = 3;
+
+    const mainColor = '#289289';
+    const bgColor = '#040810';
+
+    let blocks = [];
+    let timer = null;
+    let idx = 0;
+    let isRunning = false;
+
+    function makeLayout() {
+      const grid = [];
+      for (let y = 0; y < GRID; y++) {
+        grid[y] = [];
+        for (let x = 0; x < GRID; x++) {
+          grid[y][x] = false;
+        }
+      }
+      
+      const out = [];
+      const shapes = [[1,1],[2,1],[3,1],[1,2],[1,3],[2,2],[2,3],[3,2]];
+      
+      function canPlace(x, y, w, h) {
+        if (x < 0 || y < 0 || x + w > GRID || y + h > GRID) return false;
+        for (let dy = 0; dy < h; dy++) {
+          for (let dx = 0; dx < w; dx++) {
+            if (grid[y + dy][x + dx]) return false;
+          }
+        }
+        return true;
+      }
+      
+      function place(x, y, w, h) {
+        for (let dy = 0; dy < h; dy++) {
+          for (let dx = 0; dx < w; dx++) {
+            grid[y + dy][x + dx] = true;
+          }
+        }
+        out.push({ x: x * CELL, y: y * CELL, w: w * CELL, h: h * CELL, gx: x, gy: y, gw: w, gh: h });
+      }
+
+      for (let y = 0; y < GRID; y++) {
+        for (let x = 0; x < GRID; x++) {
+          if (grid[y][x]) continue;
+          const shuffled = shapes.slice().sort(() => Math.random() - 0.5);
+          let placed = false;
+          for (const [w, h] of shuffled) {
+            if (canPlace(x, y, w, h)) { place(x, y, w, h); placed = true; break; }
+          }
+          if (!placed && canPlace(x, y, 1, 1)) place(x, y, 1, 1);
+        }
+      }
+
+      return out.sort((a, b) => {
+        const bottomA = a.y + a.h, bottomB = b.y + b.h;
+        if (bottomA !== bottomB) return bottomB - bottomA;
+        return a.x - b.x;
+      });
+    }
+
+    function makeBlock(data, i) {
+      const el = document.createElement('div');
+      el.className = 'block';
+      el.style.left = data.x + 'px';
+      el.style.top = data.y + 'px';
+      el.style.width = data.w + 'px';
+      el.style.height = data.h + 'px';
+      
+      // Staggered pulse timing - random delay and slightly varied duration
+      const pulseDelay = (Math.random() * 2).toFixed(2);
+      const pulseDur = (2.5 + Math.random() * 1.5).toFixed(2);
+      el.style.setProperty('--pulse-delay', pulseDelay + 's');
+      el.style.setProperty('--pulse-dur', pulseDur + 's');
+      el.style.opacity = '0';
+      
+      const face = document.createElement('div');
+      face.className = 'block-face';
+      
+      face.style.border = RIM + 'px solid ' + mainColor;
+      face.style.background = bgColor;
+      face.style.borderRadius = '6px';
+      
+      if (data.gw > 1 || data.gh > 1) {
+        const innerGrid = document.createElement('div');
+        innerGrid.className = 'block-inner-grid';
+        innerGrid.style.gridTemplateColumns = `repeat(${data.gw}, 1fr)`;
+        innerGrid.style.gridTemplateRows = `repeat(${data.gh}, 1fr)`;
+        innerGrid.style.gap = RIM + 'px';
+        innerGrid.style.background = mainColor;
+        innerGrid.style.borderRadius = '3px';
+        
+        for (let cy = 0; cy < data.gh; cy++) {
+          for (let cx = 0; cx < data.gw; cx++) {
+            const cell = document.createElement('div');
+            cell.className = 'block-cell';
+            cell.style.background = bgColor;
+            cell.style.borderRadius = '3px';
+            innerGrid.appendChild(cell);
+          }
+        }
+        face.appendChild(innerGrid);
+      }
+      
+      el.appendChild(face);
+      el.data = data;
+      return el;
+    }
+
+    const ease = {
+      dur: 450,
+      wait: 0,
+      getKeyframes: (startY) => [
+        { transform: `translateY(${startY}px)`, opacity: 0, offset: 0 },
+        { transform: `translateY(${startY * 0.5}px)`, opacity: 0.6, offset: 0.35 },
+        { transform: `translateY(${startY * 0.15}px)`, opacity: 0.9, offset: 0.65 },
+        { transform: `translateY(${startY * 0.03}px)`, opacity: 1, offset: 0.88 },
+        { transform: 'translateY(0)', opacity: 1, offset: 1 }
+      ],
+      easing: 'cubic-bezier(0.1, 0, 0.2, 1)'
+    };
+
+    function clear() {
+      if (timer) { clearTimeout(timer); timer = null; }
+      isRunning = false;
+      blocks.forEach(b => b.getAnimations().forEach(a => a.cancel()));
+      stage.innerHTML = '';
+      blocks = [];
+      idx = 0;
+    }
+
+    function glowAndDisappear() {
+      // Add glow to all blocks
+      blocks.forEach(b => {
+        b.style.transition = 'filter 0.2s ease, opacity 0.3s ease';
+        b.style.filter = 'brightness(1.4) drop-shadow(0 0 8px rgba(90, 234, 218, 0.6))';
+      });
+      
+      // Then fade out
+      setTimeout(() => {
+        blocks.forEach(b => {
+          b.style.filter = 'brightness(1)';
+          b.style.opacity = '0';
+        });
+      }, 200);
+      
+      // Then restart
+      setTimeout(run, 350);
+    }
+
+    function next() {
+      if (!isRunning) return;
+      if (idx >= blocks.length) { 
+        glowAndDisappear();
+        return; 
+      }
+
+      const el = blocks[idx];
+      const d = el.data;
+      const startY = -(d.y + d.h + 80);
+
+      const animation = el.animate(ease.getKeyframes(startY), {
+        duration: ease.dur, easing: ease.easing, fill: 'none'
+      });
+
+      animation.onfinish = () => {
+        if (!isRunning) return;
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0)';
+        el.classList.add('done');
+        idx++;
+        timer = setTimeout(next, ease.wait);
+      };
+    }
+
+    function run() {
+      clear();
+      isRunning = true;
+      const layout = makeLayout();
+      layout.forEach((d, i) => {
+        const el = makeBlock(d, i);
+        stage.appendChild(el);
+        blocks.push(el);
+      });
+      timer = setTimeout(next, 500);
+    }
+
+    run();
+  </script>
+</body>
+</html>
