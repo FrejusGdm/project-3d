@@ -2,44 +2,35 @@
 
 import { Suspense, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Environment, Center } from "@react-three/drei";
-import { PLYLoader } from "three/examples/jsm/loaders/PLYLoader.js";
-import { useLoader } from "@react-three/fiber";
+import { OrbitControls, Environment, Center, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import Image from "next/image";
 
 interface ModelPreviewProps {
-  plyUrl: string | null;
+  plyUrl: string | null; // Now actually a GLB URL
   thumbnailUrl?: string | null;
   isHovered?: boolean;
 }
 
-function PLYModel({ url }: { url: string }) {
-  const geometry = useLoader(PLYLoader, url);
-  const meshRef = useRef<THREE.Mesh>(null);
+function GLBModel({ url }: { url: string }) {
+  const { scene } = useGLTF(url);
+  const groupRef = useRef<THREE.Group>(null);
 
   // Slow rotation
   useFrame((state, delta) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y += delta * 0.3;
+    if (groupRef.current) {
+      groupRef.current.rotation.y += delta * 0.3;
     }
   });
 
-  // Compute normals if needed for proper lighting
-  if (geometry.attributes.position && !geometry.attributes.normal) {
-    geometry.computeVertexNormals();
-  }
+  // Clone the scene to avoid issues with reusing
+  const clonedScene = scene.clone();
 
   return (
     <Center>
-      <mesh ref={meshRef} geometry={geometry} scale={2}>
-        <meshStandardMaterial
-          vertexColors={!!geometry.attributes.color}
-          color={geometry.attributes.color ? undefined : "#888888"}
-          roughness={0.4}
-          metalness={0.1}
-        />
-      </mesh>
+      <group ref={groupRef} scale={2}>
+        <primitive object={clonedScene} />
+      </group>
     </Center>
   );
 }
@@ -99,7 +90,7 @@ export function ModelPreview({
           <ambientLight intensity={0.5} />
           <directionalLight position={[10, 10, 5]} intensity={1} />
           <Suspense fallback={<LoadingPlaceholder />}>
-            <PLYModel url={plyUrl} />
+            <GLBModel url={plyUrl} />
           </Suspense>
           <OrbitControls
             enableZoom={false}

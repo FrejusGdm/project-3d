@@ -61,11 +61,13 @@ def materialize_model_output(model_output):
   logger.info(f"[materialize_model_output] Dict keys: {list(model_output.keys())}")
   
   # Preferred keys in order of preference, with their expected file extensions
+  # Use GLB (model_file) first because it renders properly with colors
+  # Gaussian PLY is for Gaussian Splatting which needs special renderer
   preferred_keys = [
-    ("gaussian_ply", ".ply"),  # Most preferred - this is what we want
-    ("model_file", ".ply"),    # Fallback if gaussian_ply not available
+    ("model_file", ".glb"),    # GLB renders with colors in standard Three.js
+    ("gaussian_ply", ".ply"),  # Gaussian PLY needs special renderer
     ("ply", ".ply"),
-    ("output", ".ply"),
+    ("output", ".glb"),
   ]
 
   for key, suffix in preferred_keys:
@@ -82,7 +84,7 @@ def materialize_model_output(model_output):
         # URL string - download it
         logger.info(f"[materialize_model_output] Key '{key}' is a URL: {file_obj}")
         # Only download if it's the right file type (check URL ends with expected extension)
-        if file_obj.lower().endswith(suffix.lower()) or suffix == ".ply" and ".ply" in file_obj.lower():
+        if file_obj.lower().endswith(suffix.lower()) or suffix in [".ply", ".glb"] and (suffix.lstrip(".") in file_obj.lower()):
           try:
             import requests
             logger.info(f"[materialize_model_output] Downloading {suffix} file from URL: {file_obj}")

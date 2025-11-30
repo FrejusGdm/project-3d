@@ -58,7 +58,7 @@ export function GenerationModal({
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+        className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -84,7 +84,7 @@ export function GenerationModal({
               <Loader2 className="w-4 h-4 animate-spin text-neutral-500" />
               <div className="flex-1">
                 <span className="text-sm text-neutral-600">
-                  Generating... {completedCount}/4 completed
+                  Generating... {completedCount}/2 completed
                 </span>
                 <p className="text-xs text-neutral-500 mt-1">
                   Each generation takes about 1 minute. Please be patient...
@@ -94,14 +94,22 @@ export function GenerationModal({
             <div className="mt-2 h-1 bg-neutral-200 rounded-full overflow-hidden">
               <div
                 className="h-full bg-black transition-all duration-500"
-                style={{ width: `${(completedCount / 4) * 100}%` }}
+                style={{ width: `${(completedCount / 2) * 100}%` }}
               />
             </div>
           </div>
         )}
 
-        {/* 2x2 Grid */}
-        <div className="p-6">
+        {/* Grid - scrollable */}
+        <div className="p-6 overflow-y-auto flex-1">
+          {/* Hover hint when generation is complete */}
+          {isAllDone && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-xl text-center">
+              <p className="text-sm text-blue-700">
+                👆 Hover over a model to see it in 3D!
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             {generations?.map((gen, index) => (
               <div
@@ -176,10 +184,10 @@ export function GenerationModal({
               </div>
             ))}
 
-            {/* Placeholder slots if not all 4 loaded yet */}
+            {/* Placeholder slots if not all loaded yet */}
             {generations &&
-              generations.length < 4 &&
-              Array.from({ length: 4 - generations.length }).map((_, i) => (
+              generations.length < 2 &&
+              Array.from({ length: 2 - generations.length }).map((_, i) => (
                 <div
                   key={`placeholder-${i}`}
                   className="aspect-square rounded-2xl border-2 border-dashed border-neutral-200 flex items-center justify-center bg-neutral-50"

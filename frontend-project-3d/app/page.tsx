@@ -74,7 +74,7 @@ export default function Home() {
                 animate={{ opacity: 1 }}
                 className="text-sm text-neutral-400 mb-4"
               >
-                Generating 4 variations... This takes about 1 minute per model.
+                Generating 2 variations... This takes about 1 minute per model.
               </motion.p>
             )}
 

@@ -5,7 +5,10 @@ import { action, internalAction } from "../_generated/server";
 import { internal, api } from "../_generated/api";
 import { Id } from "../_generated/dataModel";
 
-// Batch generate 4 variations in parallel
+// Number of variations to generate (reduced from 4 to 2 for faster testing)
+const NUM_VARIATIONS = 2;
+
+// Batch generate variations in parallel
 export const startBatch = action({
   args: {
     userId: v.string(),
@@ -14,9 +17,9 @@ export const startBatch = action({
   handler: async (ctx, args): Promise<{ batchId: string; generationIds: Id<"generations">[] }> => {
     const batchId = crypto.randomUUID();
 
-    // Create 4 pending generation records
+    // Create pending generation records
     const generationIds: Id<"generations">[] = [];
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < NUM_VARIATIONS; i++) {
       const id = await ctx.runMutation(api.generations.create, {
         userId: args.userId,
         prompt: args.prompt,
@@ -26,9 +29,9 @@ export const startBatch = action({
       generationIds.push(id);
     }
 
-    // Schedule 4 parallel generation actions
+    // Schedule parallel generation actions
     // Each will have a slightly different variation index for potential seed variation
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < NUM_VARIATIONS; i++) {
       await ctx.scheduler.runAfter(0, internal.actions.batchGenerate.generateSingle, {
         generationId: generationIds[i],
         prompt: args.prompt,
