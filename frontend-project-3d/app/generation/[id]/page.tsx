@@ -17,8 +17,8 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useState } from "react";
-import { api } from "../../../../backend-project-3d/convex/_generated/api";
-import { Id } from "../../../../backend-project-3d/convex/_generated/dataModel";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 
 const ModelPreview = dynamic(
   () => import("@/components/gallery/ModelPreview").then((mod) => mod.ModelPreview),

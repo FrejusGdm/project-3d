@@ -9,7 +9,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { HeroInput } from "@/components/HeroInput";
 import { GalleryGrid } from "@/components/gallery/GalleryGrid";
 import { GenerationModal } from "@/components/generation/GenerationModal";
-import { api } from "../../backend-project-3d/convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 
 export default function Home() {
   const { user } = useUser();

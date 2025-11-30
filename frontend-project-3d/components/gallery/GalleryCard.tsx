@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Id } from "../../../backend-project-3d/convex/_generated/dataModel";
+import { Id } from "@/convex/_generated/dataModel";
 import { LikeButton } from "./LikeButton";
 import dynamic from "next/dynamic";
 

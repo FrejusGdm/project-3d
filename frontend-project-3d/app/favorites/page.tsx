@@ -7,7 +7,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { GalleryCard } from "@/components/gallery/GalleryCard";
 import { Loader2, Heart } from "lucide-react";
 import Link from "next/link";
-import { api } from "../../../backend-project-3d/convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 
 export default function FavoritesPage() {
   const { user, isLoaded } = useUser();

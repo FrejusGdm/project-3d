@@ -2,8 +2,8 @@
 
 import { Heart } from "lucide-react";
 import { useMutation } from "convex/react";
-import { api } from "../../../backend-project-3d/convex/_generated/api";
-import { Id } from "../../../backend-project-3d/convex/_generated/dataModel";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import { useOptimistic } from "react";

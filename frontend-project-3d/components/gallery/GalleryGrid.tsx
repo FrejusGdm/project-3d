@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { api } from "../../../backend-project-3d/convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 import { GalleryCard } from "./GalleryCard";
 import { useUser } from "@clerk/nextjs";
 import { Loader2 } from "lucide-react";

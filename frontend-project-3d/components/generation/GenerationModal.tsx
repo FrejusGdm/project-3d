@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../backend-project-3d/convex/_generated/api";
-import { Id } from "../../../backend-project-3d/convex/_generated/dataModel";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { useUser } from "@clerk/nextjs";
 import { X, Check, Loader2, AlertCircle, Globe } from "lucide-react";
 import { motion } from "framer-motion";
