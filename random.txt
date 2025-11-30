@@ -1,0 +1,71 @@
+-------------------------------------------
+This is a fantastic concept. The "Vibe Building" sketches are actually very clear wireframes—you have a solid foundation here. The idea of "Cyan blocks," "Tetris-style loading," and "Building at the speed of thought" gives us a very specific aesthetic: Cyber-Industrial & Constructivist.
+Since you are handling the frontend, I will break this down into a Design Concept, UI Components, and Frontend Implementation Strategy so you can start coding this immediately.
+The Design Concept: "The Digital Forge"
+We want to move away from generic SaaS designs and lean into the "Builder/Maker" vibe.
+ * Color Palette: Based on your notes.
+   * Background: Deep Charcoal or Matte Black (allows the 3D model to pop).
+   * Primary Accent: Electric Cyan (The "Forge" energy).
+   * Secondary Accent: Warm Amber or Hot Pink (for the "heat" of the forge/active states).
+ * Typography:
+   * Headlines: Wide, bold Sans-serif (e.g., Satoshi or Inter Tight).
+   * UI/Input: Monospace (e.g., JetBrains Mono or Roboto Mono) to emphasize the "coding/prompting" aspect.
+The Hero Section Layout
+Based on your sketch, here is a structured proposal for the Hero Section.
+1. The Composition (Split Layout)
+ * Left Side (The Input): Headline, Value Prop, and the massive Prompt Interface.
+ * Right Side (The Result): The interactive 3D Keycap viewer floating in space.
+2. The Elements
+A. The Headline
+ * Text: "Build at the speed of thought." (From your sketch—it's a great tagline).
+ * Subtext: "Turn text prompts into custom mechanical keycaps. Designed by AI, forged in 3D, shipped to your door."
+B. The "Magic" Input Bar (The Core Feature)
+Your sketch shows a box saying "I want to build...". Let's elevate this.
+ * Visual: A large, pill-shaped or rectangular input field with a heavy Cyan border.
+ * Placeholder Text: Typing animation effect: "I want a keycap that looks like a cyberpunk samurai helmet..."
+ * The Button: A "Generate" button inside the bar. When clicked, it shouldn't just click—it should glow or "ignite."
+C. The 3D Stage (Right Side)
+ * Idle State: A blank, generic keycap rotating slowly. Wireframe mode or semi-transparent glass texture.
+ * The "Floating" Effect: Use a subtle bobbing animation (Sine wave on the Y-axis).
+D. The Loading State (Your "Tetris" Idea)
+ * This is the "Wow" factor. When the user hits "Generate":
+   * The 3D keycap on the right dissolves into the "Cyan Blocks" you sketched.
+   * These blocks fall from the top of the container (Tetris style) and stack up.
+   * As the backend finishes (approx. 5-10s), the blocks "fuse" together to reveal the generated 3D model.
+Frontend Implementation (The "How-To")
+Since you are the frontend dev, here is how I would stack this technically to achieve the sketch's vibe.
+1. The 3D Viewer (React Three Fiber)
+Don't be intimidated by the 3D part. Use React Three Fiber (R3F). It is a React wrapper for Three.js.
+ * Setup: You need a <Canvas> component on the right side.
+ * Lighting: Use <Stage> from @react-three/drei to get instant, beautiful studio lighting without complex math.
+ * The Model: Load a .gltf or .obj file.
+2. The "Tetris" Loading Animation
+You mentioned "blocks falling like Tetris."
+ * Library: Framer Motion is perfect for this.
+ * Logic:
+   * Create a grid of divs (Cyan blocks) overlaying the 3D canvas.
+   * On "Generate" click, trigger a staggerChildren animation where blocks drop in from y: -100.
+   * Once the backend returns the model URL, crossfade the blocks out to reveal the 3D model.
+3. The "Glassmorphism" UI
+To match the "Vibe Building" sketch (specifically the "Props In" box):
+ * Give your UI panels (the prompt bar, the properties panel) a glass effect.
+ * CSS:
+   background: rgba(20, 20, 20, 0.6);
+backdrop-filter: blur(12px);
+border: 1px solid rgba(0, 255, 255, 0.2); /* Cyan border */
+box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+
+Step-by-Step UI Flow (Based on your sketches)
+ * State 1: Inspiration (Idle)
+   * Hero: "Build at the speed of thought."
+   * 3D: A glossy, blank keycap rotates.
+   * Input: Empty, pulsing cursor.
+ * State 2: The Forge (Loading)
+   * User types: "A keycap shaped like a dragon head." & clicks Generate.
+   * Action: The input bar locks.
+   * Visual: The blank keycap disappears. Cyan blocks rain down (your sketch idea), stacking up in the shape of a cube or rough pyramid. A text overlay says "Forging geometry..."
+ * State 3: The Reveal (Success)
+   * Visual: The blocks glow white and vanish, revealing the newly generated Dragon Keycap model.
+   * UI Update: A new panel slides in (from your "Props In" sketch) allowing them to change material (Resin, PBT) or color.
+   * CTA: The button changes from "Generate" to "Add to Cart" or "Refine".
+Would you like me to write the React/Tailwind code for the "Input Bar" component or the basic layout structure?

@@ -8,6 +8,11 @@
  * @module
  */
 
+import type * as actions_batchGenerate from "../actions/batchGenerate.js";
+import type * as gallery from "../gallery.js";
+import type * as generations from "../generations.js";
+import type * as http from "../http.js";
+import type * as likes from "../likes.js";
 import type * as tasks from "../tasks.js";
 
 import type {
@@ -17,6 +22,11 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "actions/batchGenerate": typeof actions_batchGenerate;
+  gallery: typeof gallery;
+  generations: typeof generations;
+  http: typeof http;
+  likes: typeof likes;
   tasks: typeof tasks;
 }>;
 
