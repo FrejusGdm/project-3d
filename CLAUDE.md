@@ -26,6 +26,28 @@ npx convex dev    # Start Convex development server (run alongside pnpm dev)
 cd backend-project-3d
 pip install -r requirements.txt  # Install dependencies
 python app.py                     # Run dev server (http://localhost:8000)
+# Production (Render):
+gunicorn app:app --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 300
+```
+
+### Testing Endpoints
+```bash
+# Health check
+curl http://localhost:8000/health
+
+# Full generation pipeline
+curl -X POST http://localhost:8000/generate \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"test keycap","image_model":"nanobanana","three_d_model":"trellis"}'
+
+# Image-only generation (multipart form)
+curl -X POST http://localhost:8000/generate/image \
+  -F "prompt=mountain keycap" -F "image_model=nanobanana"
+
+# 3D from existing image
+curl -X POST http://localhost:8000/generate/3d \
+  -H "Content-Type: application/json" \
+  -d '{"image_path":"outputs/abc123.png","three_d_model":"trellis"}'
 ```
 
 ## Architecture
@@ -47,16 +69,25 @@ Key structure:
 
 ### Convex Backend (`frontend-project-3d/convex/`)
 - **Platform**: Convex (serverless functions + realtime database)
-- **Tables**: `generations` (3D models), `likes` (social engagement)
-- **Key files**: `schema.ts` (DB schema), `generations.ts` (CRUD), `actions/batchGenerate.ts` (generation orchestration)
+- **Tables**: `generations` (3D models with status tracking), `likes` (social engagement)
+- **Key files**:
+  - `schema.ts` - DB schema with indexes for userId, batchId, isPublic, status
+  - `generations.ts` - CRUD mutations/queries
+  - `actions/batchGenerate.ts` - Orchestrates parallel generation (creates 2 variations per prompt)
 
 ### Python Backend (`backend-project-3d/`)
-- **Framework**: FastAPI with Uvicorn
+- **Framework**: FastAPI with Uvicorn (Gunicorn for production)
 - **AI Pipeline** (`gen_pipeline.py`):
-  - Image generation: Google Gemini 2.5 Flash (NanoBanana class)
-  - 3D model generation: Trellis via Replicate (working), HunYuan3D (not implemented)
-  - Output format: PLY files saved to `outputs/` directory
-- **Endpoints**: `GET /health`, `POST /generate`, `GET /files/{path}`
+  - `NanoBanana` class: Google Gemini 2.5 Flash image generation with keycap-specific system prompt
+  - `Trellis` class: 3D model generation via Replicate (outputs GLB/PLY)
+  - `HunYuan3d` class: Alternative 3D generator (not working)
+  - Output: Files saved to `outputs/` directory, served via `/files/{path}` endpoint
+- **Endpoints**:
+  - `GET /health` - Health check
+  - `POST /generate` - Full pipeline (image → 3D)
+  - `POST /generate/image` - Image only (multipart form with optional ref_image)
+  - `POST /generate/3d` - 3D from existing image path
+  - `GET /files/{path}` - Serve generated files
 
 ### Environment Variables
 
@@ -77,17 +108,20 @@ REPLICATE_API_KEY=...    # For Trellis 3D model generation
 ```
 
 ### Generation Flow
-1. User submits prompt → `startBatch` action creates 4 parallel generation records
-2. `generateSingle` action calls Python backend `/generate` endpoint
-3. Python pipeline: Gemini generates image → Trellis generates 3D model → returns PLY path
-4. Convex fetches PLY from `/files` endpoint, uploads to Convex storage
-5. Frontend displays results in GenerationModal
+1. User submits prompt → `startBatch` action creates 2 parallel generation records (pending status)
+2. `generateSingle` internal action is scheduled for each record
+3. Status updated to "generating", calls Python backend `/generate` endpoint
+4. Python pipeline: Gemini generates image → Trellis generates 3D model → saves to `outputs/`
+5. Convex fetches file from `/files/{path}` endpoint, uploads to Convex storage
+6. Status updated to "completed" with `outputStorageId`, or "failed" with error message
+7. Frontend displays results in GenerationModal
 
 ### Key Patterns
 - **Client Components**: Use `"use client"` directive for interactivity (all 3D components, animations)
 - **Dynamic Imports**: 3D components use `dynamic(..., { ssr: false })` to prevent server-side R3F errors
 - **Physics Animations**: Uses @react-three/cannon for physics-based loading animations
 - **Path Alias**: `@/*` maps to frontend project root
+- **Convex Actions**: Use `"use node"` directive for Node.js runtime in actions
 
 ### Component System
 - shadcn/ui style: new-york, base color: neutral
@@ -105,3 +139,4 @@ All animations are canvas-based using React Three Fiber with Stage/OrbitControls
 ## Known Issues
 
 - **Render free tier timeout**: 30-second limit, but generation takes 1-2 minutes. See `DEBUGGING.md` for solutions.
+- **HunYuan3D**: Not implemented/working - use Trellis instead.

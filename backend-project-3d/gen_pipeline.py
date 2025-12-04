@@ -18,10 +18,19 @@ import replicate
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+load_dotenv(".env.local")
 load_dotenv()
 
 OUTPUT_DIR = Path("outputs")
-OUTPUT_DIR.mkdir(exist_ok=True)
+KEYCAP_SYSTEM_PROMPT = """
+You are a professional 3D asset designer specializing in mechanical keyboard keycaps.
+Your task is to design a single, high-quality keycap based on the user's description.
+The output must be an image of a single keycap, viewed from an isometric perspective, on a plain, neutral background (white or light gray).
+Ensure the design is clear, detailed, and suitable for 3D modeling.
+Do NOT generate a full keyboard.
+Do NOT generate multiple keycaps unless explicitly asked (but prefer single).
+Focus on the material, texture, and the specific design element requested.
+"""
 
 def _save_file_output(file_obj, suffix=".ply"):
   """Persist a Replicate FileOutput (or any file-like with read()) and return (id, filename)."""
@@ -137,7 +146,7 @@ def materialize_model_output(model_output):
 
 class ImageModel(ABC):
   @abstractmethod
-  def gen(self, prompt: str):
+  def gen(self, prompt: str, ref_image: Image.Image = None):
     pass
 
 
@@ -149,12 +158,19 @@ class NanoBanana(ImageModel):
     self.client = genai.Client(api_key=api_key)
     self.model = "gemini-2.5-flash-image"
 
-  def gen(self, prompt: str):
-    logger.info(f"[NanoBanana] Generating image for prompt: {prompt[:50]}...")
+  def gen(self, prompt: str, ref_image: Image.Image = None):
+    full_prompt = f"{KEYCAP_SYSTEM_PROMPT}\n\nUser Request: {prompt}"
+    if ref_image:
+      logger.info(f"[NanoBanana] Generating image with reference image...")
+      contents = [full_prompt, ref_image]
+    else:
+      logger.info(f"[NanoBanana] Generating image for prompt: {prompt[:50]}...")
+      contents = [full_prompt]
+      
     try:
       response = self.client.models.generate_content(
           model=self.model,
-          contents=[prompt],
+          contents=contents,
       )
       logger.info(f"[NanoBanana] Received response, type: {type(response)}")
       logger.info(f"[NanoBanana] Response attributes: {dir(response)}")
@@ -194,7 +210,7 @@ class NanoBanana(ImageModel):
 
 
 class GPTImage(ImageModel):
-  def gen(self, prompt: str):
+  def gen(self, prompt: str, ref_image: Image.Image = None):
     raise NotImplementedError
 
 
@@ -271,28 +287,80 @@ THREE_D_MODELS = {
 }
 
 
+def generate_image(prompt: str, image_model_name: str = "nanobanana", ref_image_data: bytes = None):
+  """
+  Generate an image based on prompt and optional reference image.
+  Returns the path to the saved image file.
+  """
+  logger.info(f"[generate_image] Starting: prompt='{prompt[:50]}...', model={image_model_name}, has_ref={ref_image_data is not None}")
+  
+  image_model_cls = IMAGE_MODELS.get(image_model_name.lower())
+  if not image_model_cls:
+    raise ValueError(f"Unknown image model '{image_model_name}'. Options: {list(IMAGE_MODELS)}")
+
+  image_model = image_model_cls()
+  
+  ref_image = None
+  if ref_image_data:
+    ref_image = Image.open(io.BytesIO(ref_image_data))
+
+  generated_image = image_model.gen(prompt, ref_image=ref_image)
+  
+  # Save generated image
+  file_id = uuid.uuid4().hex
+  filename = f"{file_id}.png"
+  path = OUTPUT_DIR / filename
+  generated_image.save(path, format="PNG")
+  
+  return {"id": file_id, "url": f"/files/{filename}", "path": str(path)}
+
+
+def generate_3d(image_path_str: str, three_d_model_name: str = "trellis"):
+  """
+  Generate a 3D model from an existing image file path.
+  """
+  logger.info(f"[generate_3d] Starting: image_path={image_path_str}, model={three_d_model_name}")
+  
+  three_d_model_cls = THREE_D_MODELS.get(three_d_model_name.lower())
+  if not three_d_model_cls:
+    raise ValueError(f"Unknown 3D model '{three_d_model_name}'. Options: {list(THREE_D_MODELS)}")
+
+  three_d_model = three_d_model_cls()
+  
+  # Load image
+  # Handle both absolute paths and relative paths within OUTPUT_DIR
+  image_path = Path(image_path_str)
+  if not image_path.exists():
+     # Try relative to OUTPUT_DIR if not absolute or relative to cwd
+     image_path = OUTPUT_DIR / image_path_str
+     
+  if not image_path.exists():
+      raise FileNotFoundError(f"Image file not found: {image_path_str}")
+
+  with Image.open(image_path) as img:
+      raw_output = three_d_model.gen(img)
+      
+  result = materialize_model_output(raw_output)
+  return result
+
+
 def run_pipeline(prompt: str, image_model_name: str = "nanobanana", three_d_model_name: str = "trellis"):
   '''
   Input the specific models you want and it will run the pipeline with those.
   '''
   logger.info(f"[run_pipeline] Starting pipeline: prompt='{prompt[:50]}...', image_model={image_model_name}, 3d_model={three_d_model_name}")
   
-  image_model_cls = IMAGE_MODELS.get(image_model_name.lower())
-  three_d_model_cls = THREE_D_MODELS.get(three_d_model_name.lower())
-  if not image_model_cls:
-    raise ValueError(f"Unknown image model '{image_model_name}'. Options: {list(IMAGE_MODELS)}")
-  if not three_d_model_cls:
-    raise ValueError(f"Unknown 3D model '{three_d_model_name}'. Options: {list(THREE_D_MODELS)}")
-
-  logger.info("[run_pipeline] Initializing models...")
-  image_model = image_model_cls()
-  three_d_model = three_d_model_cls()
-
-  logger.info("[run_pipeline] Generating image...")
-  generated_image = image_model.gen(prompt)
-  logger.info("[run_pipeline] Image generated, generating 3D model...")
-  raw_output = three_d_model.gen(generated_image)
-  logger.info("[run_pipeline] 3D model generated, materializing output...")
-  result = materialize_model_output(raw_output)
+  # Step 1: Generate Image
+  image_result = generate_image(prompt, image_model_name)
+  image_path = image_result["path"]
+  
+  logger.info(f"[run_pipeline] Image generated at {image_path}, generating 3D model...")
+  
+  # Step 2: Generate 3D
+  result = generate_3d(image_path, three_d_model_name)
+  
+  # Attach the intermediate image info to the result for completeness
+  result["source_image"] = image_result
+  
   logger.info(f"[run_pipeline] Pipeline completed: {result}")
   return result

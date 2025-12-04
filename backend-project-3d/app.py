@@ -3,15 +3,16 @@ FastAPI web server for 3D generation pipeline.
 Exposes endpoints that Convex actions call to generate 3D models.
 """
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional
 from pathlib import Path
 import os
 import logging
 import traceback
-from gen_pipeline import run_pipeline
+from gen_pipeline import run_pipeline, generate_image, generate_3d
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -38,10 +39,65 @@ class GenerateRequest(BaseModel):
     three_d_model: str = "trellis"
 
 
+class Generate3DRequest(BaseModel):
+    image_path: str
+    three_d_model: str = "trellis"
+
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint for Render."""
     return {"status": "ok"}
+
+
+@app.post("/generate/image")
+async def generate_image_endpoint(
+    prompt: str = Form(...),
+    image_model: str = Form("nanobanana"),
+    ref_image: Optional[UploadFile] = File(None)
+):
+    """
+    Generate an image design for a keycap.
+    Accepts a prompt and optional reference image.
+    """
+    logger.info(f"Received image generation request: prompt='{prompt[:50]}...', model={image_model}, has_ref={ref_image is not None}")
+    
+    try:
+        ref_image_data = None
+        if ref_image:
+            ref_image_data = await ref_image.read()
+
+        result = generate_image(
+            prompt=prompt,
+            image_model_name=image_model,
+            ref_image_data=ref_image_data
+        )
+        logger.info(f"Image generation completed: {result}")
+        return result
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"Image generation failed: {error_msg}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/generate/3d")
+async def generate_3d_endpoint(request: Generate3DRequest):
+    """
+    Generate a 3D model from a previously generated image.
+    """
+    logger.info(f"Received 3D generation request: image_path={request.image_path}, model={request.three_d_model}")
+    
+    try:
+        result = generate_3d(
+            image_path_str=request.image_path,
+            three_d_model_name=request.three_d_model
+        )
+        logger.info(f"3D generation completed: {result}")
+        return result
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"3D generation failed: {error_msg}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/generate")

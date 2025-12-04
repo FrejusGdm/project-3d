@@ -9,6 +9,7 @@
  */
 
 import type * as actions_batchGenerate from "../actions/batchGenerate.js";
+import type * as actions_design from "../actions/design.js";
 import type * as gallery from "../gallery.js";
 import type * as generations from "../generations.js";
 import type * as http from "../http.js";
@@ -23,6 +24,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "actions/batchGenerate": typeof actions_batchGenerate;
+  "actions/design": typeof actions_design;
   gallery: typeof gallery;
   generations: typeof generations;
   http: typeof http;
