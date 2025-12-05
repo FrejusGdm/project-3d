@@ -3,10 +3,11 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useUser } from "@clerk/nextjs";
-import { X, Upload, Loader2, ArrowRight, Wand2, Image as ImageIcon, RotateCcw, CheckCircle } from "lucide-react";
+import { X, Upload, Loader2, ArrowRight, Wand2, Image as ImageIcon, RotateCcw, CheckCircle, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import { TetrisLoader } from "../ui/TetrisLoader";
 
 const ModelPreview = dynamic(
   () => import("../gallery/ModelPreview").then((mod) => mod.ModelPreview),
@@ -19,12 +20,70 @@ interface DesignWorkspaceProps {
 }
 
 const MATERIALS = [
-  { id: "pbt", name: "PBT (Matte, Durable)" },
-  { id: "abs", name: "ABS (Smooth, Shiny)" },
-  { id: "resin", name: "Clear Resin" },
-  { id: "metal", name: "Metal/Gold" },
-  { id: "wood", name: "Wood" },
-  { id: "rubber", name: "Rubber" },
+  { id: "pbt", name: "PBT", desc: "Matte, Durable", color: "bg-neutral-200" },
+  { id: "abs", name: "ABS", desc: "Smooth, Shiny", color: "bg-blue-100" },
+  { id: "resin", name: "Resin", desc: "Clear, Glass-like", color: "bg-purple-100" },
+  { id: "metal", name: "Metal", desc: "Polished", color: "bg-yellow-100" },
+  { id: "wood", name: "Wood", desc: "Natural Grain", color: "bg-orange-100" },
+  { id: "pom", name: "POM", desc: "Smooth, Thocky", color: "bg-pink-100" },
+];
+
+const PROFILES = [
+  { id: "cherry", name: "Cherry", desc: "Standard Low" },
+  { id: "oem", name: "OEM", desc: "Standard High" },
+  { id: "sa", name: "SA", desc: "Tall Retro" },
+  { id: "xda", name: "XDA", desc: "Flat Wide" },
+];
+
+const KEY_TYPES = [
+  { id: "1u", name: "1u", desc: "Standard" },
+  { id: "spacebar", name: "Space", desc: "6.25u" },
+  { id: "enter", name: "Enter", desc: "2.25u" },
+];
+
+const TECHNIQUES = [
+  { id: "standard", name: "Print", desc: "Standard" },
+  { id: "doubleshot", name: "Double", desc: "Crisp Text" },
+  { id: "resin_cast", name: "Cast", desc: "Embedded" },
+];
+
+const EXAMPLE_PROMPTS = [
+  { 
+    label: "Cyberpunk", 
+    emoji: "🌃",
+    prompt: "A futuristic cyberpunk city skyline at night, neon lights, rain-slicked streets, dark atmosphere.", 
+    material: "resin", 
+    profile: "sa",
+    keyType: "spacebar",
+    technique: "resin_cast"
+  },
+  { 
+    label: "Retro", 
+    emoji: "💾",
+    prompt: "Vintage computer terminal aesthetics, beige plastic, green phosphor glow, command prompt text.", 
+    material: "pbt", 
+    profile: "sa",
+    keyType: "1u",
+    technique: "doubleshot"
+  },
+  { 
+    label: "Crystal", 
+    emoji: "🔮",
+    prompt: "A mythical dragon scale texture, translucent crystal, internal glowing fire core.", 
+    material: "resin", 
+    profile: "cherry",
+    keyType: "1u",
+    technique: "resin_cast"
+  },
+  { 
+    label: "Gold", 
+    emoji: "🏆",
+    prompt: "Solid gold bullion bar look, stamped weight markings, highly reflective polished surface.", 
+    material: "metal", 
+    profile: "oem",
+    keyType: "enter",
+    technique: "standard"
+  }
 ];
 
 export function DesignWorkspace({
@@ -42,6 +101,9 @@ export function DesignWorkspace({
   const [step, setStep] = useState<"design" | "preview" | "generating" | "completed">("design");
   const [prompt, setPrompt] = useState(initialPrompt);
   const [material, setMaterial] = useState("pbt");
+  const [profile, setProfile] = useState("cherry");
+  const [keyType, setKeyType] = useState("1u");
+  const [technique, setTechnique] = useState("standard");
   const [refImage, setRefImage] = useState<File | null>(null);
   const [refImagePreview, setRefImagePreview] = useState<string | null>(null);
   
@@ -95,6 +157,9 @@ export function DesignWorkspace({
       const result = await generateImageAction({
         prompt,
         material,
+        profile,
+        keyType,
+        technique,
         referenceStorageId: refStorageId,
       });
 
@@ -149,46 +214,146 @@ export function DesignWorkspace({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Left Panel: Controls */}
-        <div className="w-full md:w-1/3 border-r border-neutral-100 flex flex-col bg-neutral-50/50">
-          <div className="p-6 border-b border-neutral-100 flex justify-between items-center">
+        <div className="w-full md:w-[400px] border-r border-neutral-100 flex flex-col bg-neutral-50/80 backdrop-blur-xl">
+          <div className="p-6 border-b border-neutral-100 flex justify-between items-center bg-white/50">
             <h2 className="text-lg font-semibold">Design Studio</h2>
             <button onClick={onClose} className="p-2 hover:bg-neutral-200 rounded-full transition-colors">
               <X size={18} />
             </button>
           </div>
 
-          <div className="p-6 flex-1 overflow-y-auto space-y-6">
-            {/* Prompt */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-neutral-700">Description</label>
+          <div className="p-6 flex-1 overflow-y-auto space-y-8 custom-scrollbar">
+            {/* Prompt Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-semibold text-neutral-900 flex items-center gap-2">
+                  <Sparkles size={14} className="text-blue-500" />
+                  Description
+                </label>
+              </div>
+              
+              {/* Inspiration Chips */}
+              <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar -mx-1 px-1">
+                {EXAMPLE_PROMPTS.map((ex, i) => (
+                  <button 
+                    key={i}
+                    onClick={() => {
+                      setPrompt(ex.prompt);
+                      setMaterial(ex.material);
+                      setProfile(ex.profile);
+                      setKeyType(ex.keyType);
+                      setTechnique(ex.technique);
+                    }}
+                    disabled={step === "generating" || step === "completed"}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-neutral-200 rounded-full text-xs font-medium text-neutral-600 hover:border-blue-400 hover:text-blue-600 transition-all whitespace-nowrap shadow-sm"
+                  >
+                    <span>{ex.emoji}</span>
+                    {ex.label}
+                  </button>
+                ))}
+              </div>
+
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 disabled={step === "generating" || step === "completed"}
-                className="w-full p-3 rounded-xl border border-neutral-200 focus:border-black focus:ring-0 transition-all min-h-[100px] resize-none disabled:opacity-50"
-                placeholder="Describe your keycap..."
+                className="w-full p-4 rounded-2xl border border-neutral-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all min-h-[120px] resize-none disabled:opacity-50 text-sm shadow-sm placeholder:text-neutral-400"
+                placeholder="Describe your dream keycap..."
               />
             </div>
 
-            {/* Material */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-neutral-700">Material</label>
+            {/* Technical Specs Grid */}
+            <div className="space-y-4">
+               <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Specifications</h3>
+               
+               {/* Profile & Type Row */}
+               <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-neutral-500 ml-1">Profile</label>
+                    <div className="relative">
+                      <select
+                        value={profile}
+                        onChange={(e) => setProfile(e.target.value)}
+                        disabled={step === "generating" || step === "completed"}
+                        className="w-full p-2.5 pl-3 pr-8 rounded-xl border border-neutral-200 bg-white text-sm font-medium focus:ring-2 focus:ring-blue-50 appearance-none cursor-pointer hover:border-neutral-300 transition-colors"
+                      >
+                        {PROFILES.map((p) => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+                        <ArrowRight size={12} className="rotate-90" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-neutral-500 ml-1">Size</label>
+                    <div className="relative">
               <select
-                value={material}
-                onChange={(e) => setMaterial(e.target.value)}
+                        value={keyType}
+                        onChange={(e) => setKeyType(e.target.value)}
                 disabled={step === "generating" || step === "completed"}
-                className="w-full p-3 rounded-xl border border-neutral-200 focus:border-black focus:ring-0 bg-white disabled:opacity-50"
-              >
-                {MATERIALS.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
+                        className="w-full p-2.5 pl-3 pr-8 rounded-xl border border-neutral-200 bg-white text-sm font-medium focus:ring-2 focus:ring-blue-50 appearance-none cursor-pointer hover:border-neutral-300 transition-colors"
+                      >
+                        {KEY_TYPES.map((k) => (
+                          <option key={k.id} value={k.id}>{k.name}</option>
                 ))}
               </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+                        <ArrowRight size={12} className="rotate-90" />
+                      </div>
+                    </div>
+                  </div>
+               </div>
+
+               {/* Material Grid */}
+               <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-neutral-500 ml-1">Material</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {MATERIALS.map((m) => (
+                      <button
+                        key={m.id}
+                        onClick={() => setMaterial(m.id)}
+                        disabled={step === "generating" || step === "completed"}
+                        className={`
+                          flex flex-col items-center justify-center p-2 rounded-xl border transition-all text-center gap-1
+                          ${material === m.id 
+                            ? "border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500" 
+                            : "border-neutral-100 bg-white text-neutral-600 hover:border-neutral-200 hover:bg-neutral-50"}
+                        `}
+                      >
+                        <span className="text-xs font-semibold">{m.name}</span>
+                        <span className="text-[10px] opacity-60 leading-none">{m.desc.split(',')[0]}</span>
+                      </button>
+                    ))}
+                  </div>
+               </div>
+
+               {/* Technique */}
+               <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-neutral-500 ml-1">Technique</label>
+                  <div className="flex p-1 bg-neutral-100 rounded-xl">
+                    {TECHNIQUES.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => setTechnique(t.id)}
+                        disabled={step === "generating" || step === "completed"}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all
+                          ${technique === t.id 
+                            ? "bg-white text-black shadow-sm" 
+                            : "text-neutral-500 hover:text-neutral-700"}
+                        `}
+                      >
+                        {t.name}
+                      </button>
+                    ))}
+                  </div>
+               </div>
             </div>
 
             {/* Reference Image */}
-            <div className="space-y-2">
+            <div className="space-y-2 pt-2">
               <label className="text-sm font-medium text-neutral-700">Reference Image (Optional)</label>
               <div
                 onClick={() => step !== "generating" && step !== "completed" && fileInputRef.current?.click()}
@@ -292,10 +457,8 @@ export function DesignWorkspace({
                 )}
                 
                 {step === "generating" && (
-                  <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center text-white z-10">
-                    <Loader2 className="w-12 h-12 animate-spin mb-4" />
-                    <p className="font-medium">Generating 3D Model...</p>
-                    <p className="text-sm opacity-80 mt-2">This takes about 1-2 minutes</p>
+                  <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-10">
+                    <TetrisLoader />
                   </div>
                 )}
               </div>
@@ -341,6 +504,7 @@ function StorageImage({ storageId }: { storageId: Id<"_storage"> }) {
         alt="Generated Design" 
         fill
         className="object-contain" 
+        unoptimized
       />
     </div>
   );

@@ -7,17 +7,59 @@ import { Id } from "../_generated/dataModel";
 
 const PIPELINE_URL = process.env.PIPELINE_URL || "http://localhost:8000";
 
+const MATERIAL_PROMPTS: Record<string, string> = {
+  pbt: "PBT plastic with matte, slightly grainy textured surface, no shine, durable look",
+  abs: "ABS plastic with smooth glossy surface, slight reflectivity, vibrant colors",
+  resin: "transparent clear resin, glass-like with subtle internal reflections, depth",
+  metal: "polished metal with brushed metallic finish and reflective highlights, machined look",
+  wood: "natural wood grain texture, warm organic tones, matte finish",
+  rubber: "soft-touch silicone rubber, matte finish, non-reflective",
+  pom: "POM plastic, ultra-smooth semi-glossy surface, milky diffusion",
+  polycarbonate: "polycarbonate plastic, frosted translucent look, light diffusion",
+};
+
+const PROFILE_PROMPTS: Record<string, string> = {
+  cherry: "Cherry profile keycap (9.4mm height), low sculpted with subtle cylindrical top curve, sharp edges",
+  oem: "OEM profile keycap (11.9mm height), medium height with cylindrical sculpted top, standard mechanical look",
+  sa: "SA profile keycap (16.5mm tall), high spherical sculpted top, retro typewriter aesthetic, thick walls",
+  dsa: "DSA profile keycap (7.6mm height), flat uniform top surface, low profile, minimalist",
+  xda: "XDA profile keycap (9.1mm height), wide flat top surface, modern aesthetic, rounded corners",
+  artisan: "Artisan sculptural keycap, artistic 3D design breaking traditional shape rules",
+};
+
+const TYPE_PROMPTS: Record<string, string> = {
+  "1u": "Standard 1u square keycap (19.05mm x 19.05mm)",
+  "spacebar": "Long horizontal 6.25u spacebar keycap, elongated form",
+  "enter": "Rectangular 2.25u Enter keycap, landscape orientation",
+  "shift": "Rectangular 2.25u Shift keycap, landscape orientation",
+};
+
+const TECHNIQUE_PROMPTS: Record<string, string> = {
+  "standard": "standard surface printing",
+  "doubleshot": "double-shot injection molding, crisp high-contrast legends",
+  "resin_cast": "encapsulated resin casting, internal objects embedded inside clear resin",
+};
+
 export const generateImage = action({
   args: {
     prompt: v.string(),
     material: v.optional(v.string()),
+    profile: v.optional(v.string()),
+    keyType: v.optional(v.string()),
+    technique: v.optional(v.string()),
     referenceStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args): Promise<{ storageId: Id<"_storage">; backendPath: string }> => {
-    let finalPrompt = args.prompt;
-    if (args.material) {
-      finalPrompt += `, made of ${args.material} material, ${args.material} texture`;
-    }
+    // 1. Construct "Smart Prompt"
+    const profilePrompt = args.profile ? PROFILE_PROMPTS[args.profile] || "" : "Cherry profile keycap";
+    const materialPrompt = args.material ? MATERIAL_PROMPTS[args.material] || "" : "";
+    const typePrompt = args.keyType ? TYPE_PROMPTS[args.keyType] || "Standard 1u keycap" : "Standard 1u keycap";
+    const techniquePrompt = args.technique ? TECHNIQUE_PROMPTS[args.technique] || "" : "";
+
+    // Structure: [Subject/Dimensions] + [Profile] + [Material] + [Technique] + [Context/Lighting] + [User Design]
+    const systemContext = `A close-up 3D render of a single mechanical keyboard keycap. Shape/Dimensions: ${typePrompt}, ${profilePrompt}. Material: ${materialPrompt}. Technique: ${techniquePrompt}. View: Isometric view showing top and side surfaces clearly. Background: Neutral studio lighting, solid background.`;
+
+    const finalPrompt = `${systemContext} Design Description: ${args.prompt}`;
 
     const formData = new FormData();
     formData.append("prompt", finalPrompt);
