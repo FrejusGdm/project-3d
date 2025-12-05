@@ -1,45 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { useAction } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
 import { MinimalHeader } from "@/components/MinimalHeader";
 import { Sidebar } from "@/components/Sidebar";
 import { HeroInput } from "@/components/HeroInput";
 import { GalleryGrid } from "@/components/gallery/GalleryGrid";
-import { GenerationModal } from "@/components/generation/GenerationModal";
-import { api } from "@/convex/_generated/api";
+import { DesignWorkspace } from "@/components/design/DesignWorkspace";
 
 export default function Home() {
   const { user } = useUser();
-  const startBatch = useAction(api.actions.batchGenerate.startBatch);
 
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [currentBatchId, setCurrentBatchId] = useState<string | null>(null);
+  const [isDesignOpen, setIsDesignOpen] = useState(false);
   const [currentPrompt, setCurrentPrompt] = useState("");
 
-  const handleGenerate = async (prompt: string) => {
+  const handleGenerate = (prompt: string) => {
     if (!user) return;
-
-    setIsGenerating(true);
     setCurrentPrompt(prompt);
-
-    try {
-      const result = await startBatch({
-        userId: user.id,
-        prompt,
-      });
-      setCurrentBatchId(result.batchId);
-    } catch (error) {
-      console.error("Generation failed:", error);
-      setIsGenerating(false);
-    }
+    setIsDesignOpen(true);
   };
 
   const handleCloseModal = () => {
-    setCurrentBatchId(null);
-    setIsGenerating(false);
+    setIsDesignOpen(false);
     setCurrentPrompt("");
   };
 
@@ -68,15 +51,6 @@ export default function Home() {
             >
               Design custom keycaps with AI. We 3D print them for you.
             </motion.p>
-            {isGenerating && (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-sm text-neutral-400 mb-4"
-              >
-                Generating 2 variations... This takes about 1 minute per model.
-              </motion.p>
-            )}
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -87,7 +61,6 @@ export default function Home() {
               <HeroInput
                 placeholder="A keycap shaped like a tiny mountain with snow on top..."
                 onSubmit={handleGenerate}
-                isLoading={isGenerating}
               />
             </motion.div>
 
@@ -107,8 +80,7 @@ export default function Home() {
                 <button
                   key={suggestion}
                   onClick={() => handleGenerate(suggestion)}
-                  disabled={isGenerating}
-                  className="px-4 py-2 text-sm text-neutral-600 bg-neutral-100 hover:bg-neutral-200 rounded-full transition-colors disabled:opacity-50"
+                  className="px-4 py-2 text-sm text-neutral-600 bg-neutral-100 hover:bg-neutral-200 rounded-full transition-colors"
                 >
                   {suggestion}
                 </button>
@@ -128,12 +100,11 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Generation Modal */}
+      {/* Design Workspace Modal */}
       <AnimatePresence>
-        {currentBatchId && (
-          <GenerationModal
-            batchId={currentBatchId}
-            prompt={currentPrompt}
+        {isDesignOpen && (
+          <DesignWorkspace
+            initialPrompt={currentPrompt}
             onClose={handleCloseModal}
           />
         )}

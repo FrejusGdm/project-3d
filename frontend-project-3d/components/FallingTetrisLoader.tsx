@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, Canvas } from "@react-three/fiber";
+import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 
 // Palette similar to before but maybe slightly more "toy-like"
@@ -112,24 +113,36 @@ export function FallingTetrisLoader() {
 
         return [...current, newBlock];
       });
-    }, 100); // Spawn every 100ms
+    }, 150); // Slowed down spawn rate slightly for better visuals
 
     return () => clearInterval(interval);
   }, [offset]);
 
   return (
-    <group>
-      {/* Base Platform */}
-      <mesh position={[0, -2, 0]} receiveShadow>
-        <boxGeometry args={[3, 0.2, 3]} />
-        <meshStandardMaterial color="#e5e5e5" />
-      </mesh>
+    <div className="w-full h-full min-h-[300px] flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm absolute inset-0 z-50">
+      <div className="w-64 h-64 relative">
+        <Canvas camera={{ position: [4, 4, 4], fov: 45 }}>
+          <ambientLight intensity={0.8} />
+          <pointLight position={[10, 10, 10]} intensity={1} />
+          <group position={[0, -0.5, 0]}>
+            {/* Base Platform */}
+            <mesh position={[0, -2, 0]} receiveShadow>
+              <boxGeometry args={[3, 0.2, 3]} />
+              <meshStandardMaterial color="#333333" />
+            </mesh>
 
-      {/* Blocks */}
-      {blocks.map((block) => (
-        <FallingBlock key={block.id} data={block} />
-      ))}
-    </group>
+            {/* Blocks */}
+            {blocks.map((block) => (
+              <FallingBlock key={block.id} data={block} />
+            ))}
+          </group>
+          <OrbitControls enableZoom={false} autoRotate autoRotateSpeed={1} />
+        </Canvas>
+      </div>
+      <div className="mt-4 text-white font-mono font-bold tracking-widest animate-pulse">
+        CONSTRUCTING MODEL...
+      </div>
+    </div>
   );
 }
 

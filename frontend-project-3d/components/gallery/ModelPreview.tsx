@@ -84,6 +84,7 @@ export function ModelPreview({
           alt="Model preview"
           fill
           className="object-cover"
+          unoptimized
         />
       )}
 
